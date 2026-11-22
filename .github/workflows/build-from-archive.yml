@@ -28,13 +28,6 @@ jobs:
           $insert = $needle + "`n    if(warning && !document.getElementById('v2BootstrapOpen')) { const b=document.createElement('button'); b.id='v2BootstrapOpen'; b.type='button'; b.textContent='إنشاء حساب المدير الأول'; b.style.cssText='display:block;width:100%;margin-top:10px;padding:12px;border:0;border-radius:10px;background:#0b6585;color:white;font-weight:700'; b.onclick=()=>window.HSE107ECloud?.openPanel(); warning.insertAdjacentElement('afterend',b); }"
           if (-not $s.Contains($needle)) { throw "Could not find login warning insertion point" }
           $s = $s.Replace($needle, $insert)
-          $old = "if (!response.ok) throw new Error(data.error || ` `Erreur serveur (${response.status})` `);"
-          if ($s.Contains($old)) {
-            $s = $s.Replace($old, "if (!response.ok) throw new Error([data.error,data.detail].filter(Boolean).join(' — ') || ` `Erreur serveur (${response.status})` `);")
-          } else {
-            $s = $s.Replace("if (!response.ok) throw new Error(data.error || `Erreur serveur (${response.status})`);", "if (!response.ok) throw new Error([data.error,data.detail].filter(Boolean).join(' — ') || `Erreur serveur (${response.status})`);")
-          }
-          if (-not $s.Contains("data.detail")) { throw "Could not patch API diagnostic detail" }
           Set-Content -Path $p -Value $s -NoNewline
       - uses: actions/setup-node@v4
         with:
