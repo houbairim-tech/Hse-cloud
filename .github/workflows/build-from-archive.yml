@@ -20,21 +20,13 @@ jobs:
       - name: Extract source archive
         shell: pwsh
         run: Expand-Archive -LiteralPath "HSE107E_v2_9_1_CloudReady_Source.zip" -DestinationPath "source"
-      - name: Add first-admin button and diagnostic detail
-        shell: pwsh
-        run: |
-          $p = "source/desktop/cloud-sync.js"
-          $s = Get-Content $p -Raw
-          $needle = "if(warning) warning.textContent='تسجيل الدخول موحد وآمن عبر Cloudflare. يلزم إنشاء حساب المدير الأول قبل الاستخدام.';"
-          $insert = $needle + "`n    if(warning && !document.getElementById('v2BootstrapOpen')) { const b=document.createElement('button'); b.id='v2BootstrapOpen'; b.type='button'; b.textContent='إنشاء حساب المدير الأول'; b.style.cssText='display:block;width:100%;margin-top:10px;padding:12px;border:0;border-radius:10px;background:#0b6585;color:white;font-weight:700'; b.onclick=()=>window.HSE107ECloud?.openPanel(); warning.insertAdjacentElement('afterend',b); }"
-          if (-not $s.Contains($needle)) { throw "Could not find login warning insertion point" }
-          $s = $s.Replace($needle, $insert)
-          Set-Content -Path $p -Value $s -NoNewline
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Apply responsive and French spelling fixes
-        run: node scripts/apply-mobile-french-fixes.js
+      - name: Apply responsive, French, admin login, and cloud sync fixes
+        run: |
+          node scripts/apply-mobile-french-fixes.js
+          node --check source/desktop/cloud-sync.js
       - name: Install and build Windows packages
         working-directory: source/desktop
         run: |
@@ -62,23 +54,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Extract source archive
         run: unzip -q HSE107E_v2_9_1_CloudReady_Source.zip -d source
-      - name: Add first-admin button and diagnostic detail
-        run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const p = 'source/desktop/cloud-sync.js';
-          let s = fs.readFileSync(p, 'utf8');
-          const needle = "if(warning) warning.textContent='تسجيل الدخول موحد وآمن عبر Cloudflare. يلزم إنشاء حساب المدير الأول قبل الاستخدام.';";
-          const insert = needle + "\n    if(warning && !document.getElementById('v2BootstrapOpen')) { const b=document.createElement('button'); b.id='v2BootstrapOpen'; b.type='button'; b.textContent='إنشاء حساب المدير الأول'; b.style.cssText='display:block;width:100%;margin-top:10px;padding:12px;border:0;border-radius:10px;background:#0b6585;color:white;font-weight:700'; b.onclick=()=>window.HSE107ECloud?.openPanel(); warning.insertAdjacentElement('afterend',b); }";
-          if (!s.includes(needle)) throw new Error('Could not find login warning insertion point');
-          s = s.replace(needle, insert);
-          const old = "if (!response.ok) throw new Error(data.error || `Erreur serveur (${response.status})`);";
-          const replacement = "if (!response.ok) throw new Error([data.error,data.detail].filter(Boolean).join(' — ') || `Erreur serveur (${response.status})`);";
-          if (!s.includes(old)) throw new Error('Could not find API error handler');
-          s = s.replace(old, replacement);
-          fs.writeFileSync(p, s);
-          NODE
-          node scripts/apply-mobile-french-fixes.js
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -86,6 +61,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - name: Apply responsive, French, admin login, and cloud sync fixes
+        run: |
+          node scripts/apply-mobile-french-fixes.js
+          node --check source/desktop/cloud-sync.js
       - name: Prepare and build APK
         working-directory: source/android-app
         run: |
