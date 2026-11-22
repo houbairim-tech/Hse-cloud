@@ -1,0 +1,80 @@
+name: Build HSE107E from source archive
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "HSE107E_v2_9_1_CloudReady_Source.zip"
+      - ".github/workflows/build-from-archive.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows installer and portable EXE
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract source archive
+        shell: pwsh
+        run: Expand-Archive -LiteralPath "HSE107E_v2_9_1_CloudReady_Source.zip" -DestinationPath "source"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install and build Windows packages
+        working-directory: source/desktop
+        run: |
+          npm install
+          npm run dist
+      - name: Verify Windows outputs
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem "source/desktop/dist" -Filter *.exe -File
+          if ($files.Count -lt 2) { throw "Expected installer and portable EXE." }
+          foreach ($file in $files) {
+            if ($file.Length -lt 1000000) { throw "Suspiciously small EXE: $($file.Name)" }
+            Write-Host "$($file.Name) $($file.Length) bytes"
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HSE107E-Windows-EXE
+          if-no-files-found: error
+          path: source/desktop/dist/*.exe
+
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract source archive
+        run: unzip -q HSE107E_v2_9_1_CloudReady_Source.zip -d source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Prepare and build APK
+        working-directory: source/android-app
+        run: |
+          npm install
+          node prepare-www.js
+          if [ ! -d android ]; then npx cap add android; fi
+          node apply-icon.js
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - name: Verify APK
+        run: |
+          APK="source/android-app/android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          unzip -t "$APK" >/dev/null
+          sha256sum "$APK"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HSE107E-Android-APK
+          if-no-files-found: error
+          path: source/android-app/android/app/build/outputs/apk/debug/app-debug.apk
