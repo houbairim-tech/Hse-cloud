@@ -94,4 +94,71 @@ if(!s.includes('HSE107E dashboard circles activation')){
  s=s.replace('</body>','<script>/* HSE107E dashboard circles activation */'+js+'</script></body>');
 }
 
+
+/* Cloud sync: reconcile remote-only records and run automatic cross-device sync */
+{
+ const cp='source/desktop/cloud-sync.js';
+ let cs=fs.readFileSync(cp,'utf8');
+ if(!cs.includes('HSE107E automatic bidirectional sync v1')){
+   const oldBase='const base=baseline();\n    let uploaded=0, downloaded=0, unchanged=0, conflicts=[];';
+   const newBase='const base=baseline();\n    let uploaded=0, downloaded=0, unchanged=0, conflicts=[];\n    // First-time devices must receive cloud records absent from local storage.\n    for(const [rk,rr] of remote){if(SKIP.test(rk))continue;if(!Object.prototype.hasOwnProperty.call(local,rk)){const rv=safeParse(rr.payload,rr.payload);localStorage.setItem(rk,typeof rr.payload===\'string\'?rr.payload:JSON.stringify(rr.payload));local[rk]=rv;base[rk]={version:Number(rr.version),payload:rv};downloaded++;}}';
+   if(!cs.includes(oldBase))throw new Error('Cloud sync baseline insertion point missing');
+   cs=cs.replace(oldBase,newBase);
+   // Safe pull: never overwrite unsynced local edits; only apply remote-only or unchanged-since-baseline values.
+   const start=cs.indexOf('  async function pull() {');
+   const end=cs.indexOf('\n  const esc =',start);
+   if(start<0||end<0)throw new Error('Cloud pull function boundaries missing');
+   const safePull=`  async function pull() {
+    if(!token()) throw new Error('Connexion Cloud requise.');
+    const d=await request('/records?module=app',{headers:authHeaders()});
+    const b=baseline(); let count=0, conflicts=[];
+    for(const r of (d.records||[])) {
+      if(SKIP.test(r.record_key)) continue;
+      const key=r.record_key, value=safeParse(r.payload,r.payload), prev=b[key];
+      const exists=localStorage.getItem(key);
+      if(exists===null || (prev && stable(safeParse(exists,exists))===stable(prev.payload))) {
+        localStorage.setItem(key,typeof r.payload==='string'?r.payload:JSON.stringify(r.payload));
+        b[key]={version:Number(r.version),payload:value}; count++;
+      } else if(stable(safeParse(exists,exists))===stable(value)) {
+        b[key]={version:Number(r.version),payload:value};
+      } else if(!prev) conflicts.push(key);
+      else if(Number(r.version)!==Number(prev.version) && stable(value)!==stable(prev.payload)) conflicts.push(key);
+    }
+    saveBaseline(b);
+    if(count) location.reload();
+    return {downloaded:count,conflicts};
+  }`;
+   cs=cs.slice(0,start)+safePull+cs.slice(end);
+   // Replace the manual download result renderer to reflect the structured response.
+   cs=cs.replace("const n=await pull();msg.style.color='#087443';msg.textContent='تم تنزيل '+n+' عنصر';","const r=await pull();msg.style.color=r.conflicts.length?'#b45309':'#087443';msg.textContent='تم تنزيل '+r.downloaded+' عنصر'+(r.conflicts.length+' تعارض: '+r.conflicts.join(', '));");
+   // Run sync on startup and periodically; viewers download only, editors upload + reconcile.
+   const auto=`/* HSE107E automatic bidirectional sync v1 */
+  let syncBusy=false;
+  async function syncCycle(){
+    if(syncBusy||!token()||!navigator.onLine)return;
+    syncBusy=true;
+    try{
+      const current=user();
+      if(current&&current.role==='viewer') await pull();
+      else { const result=await push(); if(result.conflicts.length) console.warn('[HSE107E Cloud] sync conflicts',result.conflicts); }
+    }catch(e){console.warn('[HSE107E Cloud] automatic sync failed:',e.message||e);}
+    finally{syncBusy=false;}
+  }
+  function startAutoSync(){
+    if(window.__hse107eAutoSyncStarted)return;
+    window.__hse107eAutoSyncStarted=true;
+    setTimeout(syncCycle,2500);
+    setInterval(syncCycle,20000);
+    window.addEventListener('online',syncCycle);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncCycle();});
+  }`;
+   const bridge='  function bridgeAppLogin() {';
+   if(!cs.includes(bridge))throw new Error('Cloud bridge insertion point missing');
+   cs=cs.replace(bridge,auto+'\n'+bridge);
+   cs=cs.replace("if(u && window.v2SetHeader) window.v2SetHeader();","if(u && window.v2SetHeader) window.v2SetHeader();\n      if(u) startAutoSync();");
+   cs=cs.replace("window.HSE107ECloud={login,bootstrap,logout,restore,push,pull,collect,createUser,openPanel:openCloudPanel,api:API,user};","window.HSE107ECloud={login,bootstrap,logout,restore,push,pull,collect,createUser,openPanel:openCloudPanel,api:API,user,syncNow:syncCycle};");
+   fs.writeFileSync(cp,cs);
+ }
+}
+
 fs.writeFileSync(p,s);
