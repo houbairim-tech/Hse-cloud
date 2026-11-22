@@ -64,4 +64,34 @@ if(!s.includes('HSE107E side navigation drawer')){
  s=s.replace('</body>','<script>/* HSE107E side navigation drawer */'+js+'</script></body>');
 }
 
+
+/* Dashboard KPI circles + drawer toggle stacking correction */
+const dashCss=`
+body.hse-nav-open #hseNavToggle{visibility:hidden;pointer-events:none}
+#hseNavClose{left:calc(min(310px,88vw) - 52px);top:12px}
+#tab-dashboard.hse-dashboard-circles #statCards,
+#tab-dashboard.hse-dashboard-circles #statCards2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;align-items:center}
+#tab-dashboard.hse-dashboard-circles .stat-card{width:clamp(132px,17vw,180px);height:clamp(132px,17vw,180px);aspect-ratio:1/1;border-radius:50%;margin:8px auto;padding:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;border:7px solid rgba(255,255,255,.78);box-shadow:0 5px 18px rgba(15,23,42,.13);min-width:0}
+#tab-dashboard.hse-dashboard-circles .stat-card .value{font-size:clamp(1.45rem,3vw,2.05rem);font-weight:850;line-height:1.08;overflow-wrap:anywhere}
+#tab-dashboard.hse-dashboard-circles .stat-card .label{font-size:.72rem;line-height:1.3;margin-top:7px;font-weight:750;letter-spacing:.02em}
+#tab-dashboard.hse-dashboard-circles .stat-card .pct{font-size:.66rem;line-height:1.25;margin-top:4px;opacity:.9}
+@media(max-width:760px){
+ #tab-dashboard.hse-dashboard-circles #statCards,
+ #tab-dashboard.hse-dashboard-circles #statCards2{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ #tab-dashboard.hse-dashboard-circles .stat-card{width:min(42vw,158px);height:min(42vw,158px);padding:10px;border-width:5px}
+ #tab-dashboard.hse-dashboard-circles .stat-card .value{font-size:clamp(1.25rem,6vw,1.75rem)}
+ #tab-dashboard.hse-dashboard-circles .stat-card .label{font-size:.65rem}
+ #tab-dashboard.hse-dashboard-circles .stat-card .pct{font-size:.59rem}
+}
+`;
+if(!s.includes('Dashboard KPI circles + drawer toggle stacking correction')){
+ const marker='<style id="dynStyle"></style>';
+ if(!s.includes(marker)) throw new Error('style marker missing for dashboard circles');
+ s=s.replace(marker,'<style id="hseDashboardCircles">'+dashCss+'</style>'+marker);
+}
+if(!s.includes('HSE107E dashboard circles activation')){
+ const js=`(function(){const root=document.getElementById('tab-dashboard');if(!root)return;const activate=()=>{root.classList.add('hse-dashboard-circles');};activate();const obs=new MutationObserver(activate);obs.observe(root,{childList:true,subtree:true});})();`;
+ s=s.replace('</body>','<script>/* HSE107E dashboard circles activation */'+js+'</script></body>');
+}
+
 fs.writeFileSync(p,s);
