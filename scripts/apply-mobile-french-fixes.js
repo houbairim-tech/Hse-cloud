@@ -185,9 +185,9 @@ if(!s.includes('HSE107E dashboard circles activation')){
    // The main app login is separate from Cloud restore; start sync at the actual successful login point.
    const loginNeedle="const u=await login(email,password);";
    if(!cs.includes(loginNeedle)) throw new Error('Cloud login success point missing');
-   cs=cs.replace(loginNeedle,loginNeedle+"\\n        startAutoSync();\\n        setTimeout(syncCycle,0);");
+   cs=cs.replace(loginNeedle,loginNeedle+"\n        startAutoSync();\n        setTimeout(syncCycle,0);");
    const bootstrapNeedle="await bootstrap(document.getElementById('hseCloudEmail').value.trim(),document.getElementById('hseCloudPassword').value,prompt('الاسم الظاهر','مسؤول HSE')||'مسؤول HSE',code);";
-   if(cs.includes(bootstrapNeedle)) cs=cs.replace(bootstrapNeedle,bootstrapNeedle+"\\n        startAutoSync();\\n        setTimeout(syncCycle,0);");
+   if(cs.includes(bootstrapNeedle)) cs=cs.replace(bootstrapNeedle,bootstrapNeedle+"\n        startAutoSync();\n        setTimeout(syncCycle,0);");
 
    const bridge='  function bridgeAppLogin() {';
    if(!cs.includes(bridge))throw new Error('Cloud bridge insertion point missing');
