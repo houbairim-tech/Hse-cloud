@@ -152,6 +152,7 @@ if(!s.includes('HSE107E dashboard circles activation')){
     window.addEventListener('online',syncCycle);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncCycle();});
   }`;
+   cs=cs.replace("saveUser(d.user);\\n    cacheLocalIdentity(d.user);\\n    return d.user;","saveUser(d.user);\\n    cacheLocalIdentity(d.user);\\n    if(typeof startAutoSync==='function') startAutoSync();\\n    return d.user;");
    const bridge='  function bridgeAppLogin() {';
    if(!cs.includes(bridge))throw new Error('Cloud bridge insertion point missing');
    cs=cs.replace(bridge,auto+'\n'+bridge);
@@ -162,11 +163,5 @@ if(!s.includes('HSE107E dashboard circles activation')){
 }
 
 
-/* Start automatic sync immediately after a successful interactive sign-in */
-if(!c.includes('HSE107E start sync after login')){
- c=c.replace("saveUser(d.user);\n    cacheLocalIdentity(d.user);\n    return d.user;","saveUser(d.user);\n    cacheLocalIdentity(d.user);\n    if(typeof startAutoSync==='function') startAutoSync();\n    return d.user;");
- c=c.replace("saveUser(d.user);\n    cacheLocalIdentity(d.user);\n    return d.user;","saveUser(d.user);\n    cacheLocalIdentity(d.user);\n    if(typeof startAutoSync==='function') startAutoSync();\n    return d.user;");
- c+='\n// HSE107E start sync after login: interactive login/bootstrap also starts sync cycle.\n';
-}
 
 fs.writeFileSync(p,s);
