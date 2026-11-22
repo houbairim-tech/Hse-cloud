@@ -238,5 +238,26 @@ if(!s.includes('HSE107E dashboard circles activation')){
  }
 }
 
+/* Cloud sync/auth hardening v2 */
+{
+ const cp='source/desktop/cloud-sync.js';
+ let cs=fs.readFileSync(cp,'utf8');
+ cs=cs.replace("const SKIP = /^(hse107e_cloud_|hse107e_v2_(user|users)$|__|drive|google)/i;","const SKIP = /^(hse107e_cloud_|hse107e_v2_(user|users|lang|epc_mig21|last_backup|audit)$|hse107e_drive_state$|__|drive|google)/i;");
+ const bt=String.fromCharCode(96);
+ const oldReq="if (!response.ok) throw new Error(data.error || "+bt+"Erreur serveur (${response.status})"+bt+");";
+ const newReq="if (!response.ok) { const e=new Error(data.error || "+bt+"Erreur serveur (${response.status})"+bt+"); e.status=response.status; throw e; }";
+ cs=cs.replace(oldReq,newReq);
+ const oldCatch="    } catch (e) {\n      localStorage.removeItem(TOKEN_KEY);\n      saveUser(null);\n      localStorage.removeItem(LOCAL_USER_KEY);\n      return null;\n    }";
+ const newCatch="    } catch (e) {\n      if(e && (e.status===401 || e.status===403)) {\n        localStorage.removeItem(TOKEN_KEY);\n        saveUser(null);\n        localStorage.removeItem(LOCAL_USER_KEY);\n      }\n      return null;\n    }";
+ cs=cs.replace(oldCatch,newCatch);
+ cs=cs.replace("      if(r && !prev) { conflicts.push(key); continue; }","      if(r && !prev) { localStorage.setItem(key,typeof r.payload==='string'?r.payload:JSON.stringify(r.payload)); base[key]={version:Number(r.version),payload:remoteValue}; downloaded++; continue; }");
+ const helper="  function mergeSyncValue(localValue, remoteValue) {\n    if(Array.isArray(localValue) && Array.isArray(remoteValue)) {\n      const out=new Map();\n      const k=x=>x&&typeof x==='object'&&x.id!=null?'id:'+x.id:'raw:'+stable(x);\n      remoteValue.forEach(x=>out.set(k(x),x));\n      localValue.forEach(x=>{const key=k(x),r=out.get(key);if(!r){out.set(key,x);return}const lt=Date.parse(x.updatedAt||x.updated_at||x.modifiedAt||x.modified_at||x.createdAt||'')||0;const rt=Date.parse(r.updatedAt||r.updated_at||r.modifiedAt||r.modified_at||r.createdAt||'')||0;if(lt>=rt)out.set(key,x)});\n      return [...out.values()];\n    }\n    if(localValue&&remoteValue&&typeof localValue==='object'&&typeof remoteValue==='object'&&!Array.isArray(localValue)&&!Array.isArray(remoteValue)) return {...remoteValue,...localValue};\n    return localValue;\n  }\n";
+ if(!cs.includes('function mergeSyncValue')) cs=cs.replace('  async function push() {',helper+'  async function push() {');
+ const oldConflict="      if(r && prev && Number(r.version)!==Number(prev.version) &&\n         stable(remoteValue)!==stable(prev.payload) &&\n         stable(localValue)!==stable(prev.payload)) {\n        conflicts.push(key); continue;\n      }";
+ const newConflict="      if(r && prev && Number(r.version)!==Number(prev.version) &&\n         stable(remoteValue)!==stable(prev.payload) &&\n         stable(localValue)!==stable(prev.payload)) {\n        const mergedValue=mergeSyncValue(localValue,remoteValue);\n        const saved=await request('/records',{method:'POST',headers:authHeaders(),body:JSON.stringify({module:'app',key,payload:mergedValue,baseVersion:Number(r.version||0)})});\n        base[key]={version:Number(saved.record.version),payload:mergedValue}; continue;\n      }";
+ cs=cs.replace(oldConflict,newConflict);
+ fs.writeFileSync(cp,cs);
+}
+
 
 fs.writeFileSync(p,s);
