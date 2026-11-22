@@ -5,9 +5,39 @@ const css='/* mobile layout + French spellcheck */\n@media(max-width:760px){html
 if(!s.includes('mobile layout + French spellcheck')){const m='<style id="dynStyle"></style>';if(!s.includes(m))throw Error('style marker missing');s=s.replace(m,'<style id="mobileFrenchFix">'+css+'</style>'+m);}
 const proof='(function(){function apply(el){if(!el||!el.matches)return;if(el.matches("input:not([type]),input[type=text],input[type=search],input[type=email],textarea,[contenteditable=true]")){el.setAttribute("spellcheck","true");el.setAttribute("lang","fr");el.setAttribute("autocorrect","on");el.setAttribute("autocapitalize","sentences");}}document.querySelectorAll("input,textarea,[contenteditable=true]").forEach(apply);new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1){apply(n);n.querySelectorAll?.("input,textarea,[contenteditable=true]").forEach(apply);}}))).observe(document.documentElement,{childList:true,subtree:true});document.addEventListener("focusin",e=>apply(e.target),true);})();';
 if(!s.includes('HSE107E French spellcheck')){s=s.replace('</body>','<script>/* HSE107E French spellcheck */'+proof+'</script></body>');}
-// Hide configuration entry points from non-first-admin accounts.
-const gate='(function(){function admin(){try{return JSON.parse(localStorage.getItem("hse107e_v2_user")||"{}").r==="admin";}catch(e){return false;}}function apply(){if(admin())return;document.querySelectorAll("button[onclick*=\\"openSettings\\"],button[onclick*=\\"epcParOpen\\"]").forEach(b=>b.style.setProperty("display","none","important"));}apply();new MutationObserver(apply).observe(document.documentElement,{childList:true,subtree:true});const os=window.openSettings,op=window.epcParOpen;if(os)window.openSettings=function(){if(!admin()){alert("هذه الإعدادات متاحة للمدير الأول فقط.");return;}return os.apply(this,arguments);};if(op)window.epcParOpen=function(){if(!admin()){alert("هذه الإعدادات متاحة للمدير الأول فقط.");return;}return op.apply(this,arguments);};})();';
-if(!s.includes('first-admin settings gate'))s=s.replace('</body>','<script>/* first-admin settings gate */'+gate+'</script></body>');
+// Settings visibility follows the authenticated application session. Re-evaluate after login/header refresh.
+const settingsGate = `(function(){
+ function currentRole(){
+  try {
+   const s=JSON.parse(localStorage.getItem('hse107e_v2_user')||'null');
+   if(s && s.r) return String(s.r).toLowerCase();
+  } catch(e){}
+  try {
+   const u=JSON.parse(localStorage.getItem('hse107e_v2_user')||'null');
+   if(u && u.role) return String(u.role).toLowerCase();
+  } catch(e){}
+  return '';
+ }
+ function admin(){return currentRole()==='admin';}
+ function apply(){
+  const allowed=admin();
+  document.querySelectorAll('button[onclick*="openSettings"],button[onclick*="epcParOpen"]').forEach(b=>{
+   if(allowed){b.hidden=false;b.removeAttribute('aria-hidden');}
+   else {b.hidden=true;b.setAttribute('aria-hidden','true');}
+  });
+ }
+ const os=window.openSettings,op=window.epcParOpen;
+ if(os) window.openSettings=function(){apply();if(!admin()){alert('هذه الإعدادات متاحة للمدير الأول فقط.');return;}return os.apply(this,arguments);};
+ if(op) window.epcParOpen=function(){apply();if(!admin()){alert('هذه الإعدادات متاحة للمدير الأول فقط.');return;}return op.apply(this,arguments);};
+ const sh=window.v2SetHeader;
+ if(sh) window.v2SetHeader=function(){const r=sh.apply(this,arguments);apply();return r;};
+ apply();
+ new MutationObserver(apply).observe(document.documentElement,{childList:true,subtree:true});
+ window.addEventListener('storage',apply);
+})();`;
+if(!s.includes('HSE107E settings gate v2')){
+ s=s.replace('</body>','<script>/* HSE107E settings gate v2 */'+settingsGate+'</script></body>');
+}
 
 /* Side navigation drawer and full-size responsive forms */
 const drawerCss = `
