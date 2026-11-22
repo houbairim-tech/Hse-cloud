@@ -6,6 +6,7 @@ on:
     paths:
       - "HSE107E_v2_9_1_CloudReady_Source.zip"
       - ".github/workflows/build-from-archive.yml"
+      - "scripts/apply-mobile-french-fixes.js"
 
 permissions:
   contents: read
@@ -32,6 +33,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Apply responsive and French spelling fixes
+        run: node scripts/apply-mobile-french-fixes.js
       - name: Install and build Windows packages
         working-directory: source/desktop
         run: |
@@ -75,6 +78,7 @@ jobs:
           s = s.replace(old, replacement);
           fs.writeFileSync(p, s);
           NODE
+          node scripts/apply-mobile-french-fixes.js
       - uses: actions/setup-node@v4
         with:
           node-version: 20
