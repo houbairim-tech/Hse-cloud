@@ -152,7 +152,13 @@ if(!s.includes('HSE107E dashboard circles activation')){
     window.addEventListener('online',syncCycle);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncCycle();});
   }`;
-   cs=cs.replace("saveUser(d.user);\\n    cacheLocalIdentity(d.user);\\n    return d.user;","saveUser(d.user);\\n    cacheLocalIdentity(d.user);\\n    if(typeof startAutoSync==='function') startAutoSync();\\n    return d.user;");
+   // The main app login is separate from Cloud restore; start sync at the actual successful login point.
+   const loginNeedle="const u=await login(email,password);";
+   if(!cs.includes(loginNeedle)) throw new Error('Cloud login success point missing');
+   cs=cs.replace(loginNeedle,loginNeedle+"\\n        startAutoSync();\\n        setTimeout(syncCycle,0);");
+   const bootstrapNeedle="await bootstrap(document.getElementById('hseCloudEmail').value.trim(),document.getElementById('hseCloudPassword').value,prompt('الاسم الظاهر','مسؤول HSE')||'مسؤول HSE',code);";
+   if(cs.includes(bootstrapNeedle)) cs=cs.replace(bootstrapNeedle,bootstrapNeedle+"\\n        startAutoSync();\\n        setTimeout(syncCycle,0);");
+
    const bridge='  function bridgeAppLogin() {';
    if(!cs.includes(bridge))throw new Error('Cloud bridge insertion point missing');
    cs=cs.replace(bridge,auto+'\n'+bridge);
