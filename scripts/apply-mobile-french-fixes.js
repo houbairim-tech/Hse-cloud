@@ -205,7 +205,8 @@ if(!s.includes('HSE107E dashboard circles activation')){
  const cp='source/desktop/cloud-sync.js';
  let cs=fs.readFileSync(cp,'utf8');
  const needle="if(warning) warning.textContent='تسجيل الدخول موحد وآمن عبر Cloudflare. يلزم إنشاء حساب المدير الأول قبل الاستخدام.';";
- const inject=needle+`
+ const loginMessage="if(warning) warning.textContent='يوجد حساب مدير مسجل. سجّل الدخول بالبريد وكلمة المرور الحاليين؛ إنشاء المدير الأول مخصص للتهيئة الأولى فقط.';";
+ const inject=loginMessage+`
     // Add the first-admin action inside the actual login panel, not beside a conditional warning element.
     const loginPanel=document.getElementById('v2Login');
     if(loginPanel && !document.getElementById('hseFirstAdminSetup')) {
@@ -215,8 +216,18 @@ if(!s.includes('HSE107E dashboard circles activation')){
       setup.setAttribute('aria-label','إنشاء حساب المدير الأول');
       setup.style.cssText='display:block!important;visibility:visible!important;opacity:1!important;width:100%;min-height:46px;margin:12px 0 4px;padding:12px;border:0;border-radius:10px;background:#0b6585;color:#fff;font-weight:700;font-size:15px;cursor:pointer;position:relative;z-index:5';
       setup.addEventListener('click',function(){
-        if(window.HSE107ECloud && typeof window.HSE107ECloud.openPanel==='function') window.HSE107ECloud.openPanel();
-        else { const msg=document.getElementById('v2LoginErr'); if(msg) msg.textContent='واجهة إعداد المدير غير جاهزة. أعد تحميل التطبيق.'; }
+        if(window.HSE107ECloud && typeof window.HSE107ECloud.openPanel==='function') {
+          window.HSE107ECloud.openPanel();
+          request('/health').then(function(state){
+            if(state && state.initialized) {
+              const first=document.getElementById('hseCloudBootstrap');
+              if(first) first.remove();
+              const panelMsg=document.getElementById('hseCloudPanelMsg');
+              if(panelMsg) { panelMsg.textContent='يوجد حساب مدير بالفعل. استخدم زر الدخول؛ لا تنشئ مديراً جديداً.'; panelMsg.style.color='#087443'; }
+              setup.textContent='الدخول إلى خدمات Cloud';
+            }
+          }).catch(function(){});
+        } else { const msg=document.getElementById('v2LoginErr'); if(msg) msg.textContent='واجهة الدخول السحابي غير جاهزة. أعد تحميل التطبيق.'; }
       });
       loginPanel.appendChild(setup);
     }`;
