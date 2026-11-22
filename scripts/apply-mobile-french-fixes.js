@@ -200,4 +200,32 @@ if(!s.includes('HSE107E dashboard circles activation')){
 
 
 
+/* Always expose first-admin setup from the primary login screen */
+{
+ const cp='source/desktop/cloud-sync.js';
+ let cs=fs.readFileSync(cp,'utf8');
+ const needle="if(warning) warning.textContent='تسجيل الدخول موحد وآمن عبر Cloudflare. يلزم إنشاء حساب المدير الأول قبل الاستخدام.';";
+ const inject=needle+`
+    // Add the first-admin action inside the actual login panel, not beside a conditional warning element.
+    const loginPanel=document.getElementById('v2Login');
+    if(loginPanel && !document.getElementById('hseFirstAdminSetup')) {
+      const setup=document.createElement('button');
+      setup.id='hseFirstAdminSetup'; setup.type='button';
+      setup.textContent='إنشاء حساب المدير الأول';
+      setup.setAttribute('aria-label','إنشاء حساب المدير الأول');
+      setup.style.cssText='display:block!important;visibility:visible!important;opacity:1!important;width:100%;min-height:46px;margin:12px 0 4px;padding:12px;border:0;border-radius:10px;background:#0b6585;color:#fff;font-weight:700;font-size:15px;cursor:pointer;position:relative;z-index:5';
+      setup.addEventListener('click',function(){
+        if(window.HSE107ECloud && typeof window.HSE107ECloud.openPanel==='function') window.HSE107ECloud.openPanel();
+        else { const msg=document.getElementById('v2LoginErr'); if(msg) msg.textContent='واجهة إعداد المدير غير جاهزة. أعد تحميل التطبيق.'; }
+      });
+      loginPanel.appendChild(setup);
+    }`;
+ if(!cs.includes('hseFirstAdminSetup')) {
+   if(!cs.includes(needle)) throw new Error('Primary login warning anchor missing in cloud-sync.js');
+   cs=cs.replace(needle,inject);
+   fs.writeFileSync(cp,cs);
+ }
+}
+
+
 fs.writeFileSync(p,s);
